@@ -66,7 +66,7 @@ if st.button("Bu Senaryoyu Yorumla 🚀"):
         try:
             # 1. Modeli Yapılandır
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-pro')
+            model = genai.GenerativeModel('gemini-1.5-pro')
 
             # 2. Bağlamı (Context) Hazırla
             # Burası RAG'in "Context" kısmıdır. Sayısal veriyi metne döküyoruz.
