@@ -36,6 +36,26 @@ with st.sidebar:
     # API Key from app_new.py
     api_key = st.text_input("Google Gemini API Key:", type="password")
 
+    # Model Seçimi
+    if 'available_models' not in st.session_state:
+        st.session_state.available_models = []
+
+    if st.button("Modelleri Getir"):
+        if not api_key:
+            st.error("Lütfen önce API anahtarını girin.")
+        else:
+            try:
+                genai.configure(api_key=api_key)
+                models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                st.session_state.available_models = models
+                st.success(f"{len(models)} model bulundu.")
+            except Exception as e:
+                st.error(f"Modeller getirilirken hata oluştu: {e}")
+
+    selected_model = "gemini-1.5-pro" # Varsayılan
+    if st.session_state.available_models:
+        selected_model = st.selectbox("Kullanılacak Model:", st.session_state.available_models, index=0)
+
     st.divider()
 
     st.header("💰 Varlıklarım")
@@ -108,7 +128,7 @@ if st.button("Bu Senaryoyu Yorumla 🚀"):
         try:
             # 1. Modeli Yapılandır
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-pro')
+            model = genai.GenerativeModel(selected_model)
 
             # 2. Bağlamı (Context) Hazırla
             context_text = f"""
