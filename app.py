@@ -95,8 +95,22 @@ with st.sidebar:
     except:
         start_date_obj = datetime.now().date() - timedelta(days=365) # Varsayılan 1 yıl önce
 
+    # API Key girişi ve Model Seçimi (Form dışına alındı)
+    api_key = st.text_input("Gemini API Key:", type="password")
+
+    selected_model_name = 'gemini-pro' # Varsayılan model
+
+    if api_key:
+        try:
+            genai.configure(api_key=api_key)
+            # Modelleri listele
+            models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            if models:
+                selected_model_name = st.selectbox("Yapay Zeka Modeli Seç:", models, index=0)
+        except Exception as e:
+            st.error(f"Model listesi alınamadı: {e}")
+
     with st.form("settings"):
-        api_key = st.text_input("Gemini API Key:", type="password")
         st.info(f"Başlangıç: {saved_date_str}")
         
         new_btc = st.number_input("BTC Miktarı:", value=saved_btc, format="%.5f")
@@ -151,7 +165,7 @@ if saved_initial > 0:
                 st.error("API Key gerekli.")
             else:
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-pro')
+                model = genai.GenerativeModel(selected_model_name)
                 
                 context = f"""
                 Sen bir portföy analistisin.
