@@ -7,71 +7,39 @@ from datetime import datetime, timedelta
 import db
 
 # --- SAYFA AYARLARI ---
-st.set_page_config(page_title="FutureWallet Pro", page_icon="📈", layout="wide")
+st.set_page_config(page_title="FutureWallet Ultimate", page_icon="💎", layout="wide")
 db.init_db()
 
-st.title("📈 FutureWallet: Karşılaştırmalı Analiz")
+st.title("💎 FutureWallet: Geçmiş Analiz & Gelecek Simülasyonu")
 
-# --- 1. VERİ MOTORU (YENİ) ---
-@st.cache_data(ttl=3600) # 1 saat cache'le
+# --- 1. FONKSİYONLAR ---
+@st.cache_data(ttl=3600)
 def get_benchmark_data(start_date, btc_amount, initial_usd):
-    """
-    Başlangıç tarihinden bugüne kadar:
-    1. Bitcoin
-    2. Altın (GC=F)
-    3. S&P 500 (^GSPC)
-    verilerini çeker ve kümülatif getiriye çevirir.
-    """
-    # Yahoo Finance Sembolleri
-    tickers = {
-        'Bitcoin': 'BTC-USD',
-        'Altın (Ons)': 'GC=F',
-        'S&P 500': '^GSPC'
-    }
-    
-    # Verileri toplu çek
+    """Geçmiş performans grafiği verilerini hazırlar"""
+    tickers = {'Bitcoin': 'BTC-USD', 'Altın (Ons)': 'GC=F', 'S&P 500': '^GSPC'}
     df_list = []
+    
     for name, ticker in tickers.items():
         try:
-            # Veriyi indir
             data = yf.download(ticker, start=start_date, progress=False)['Close']
+            if isinstance(data, pd.DataFrame): data = data.iloc[:, 0]
             
-            # Eğer veri MultiIndex dönerse (yeni yfinance sürümlerinde) düzelt
-            if isinstance(data, pd.DataFrame):
-                data = data.iloc[:, 0]
-                
-            # Normalizasyon: Başlangıç gününü 0 kabul et, yüzdelik değişimi bul
-            # Formül: ((Fiyat / Başlangıç_Fiyatı) - 1) * 100
-            first_price = data.iloc[0]
-            normalized = ((data / first_price) - 1) * 100
-            
-            # Seriyi DataFrame'e çevir
-            df_temp = pd.DataFrame(normalized)
-            df_temp.columns = [name]
-            df_list.append(df_temp)
-            
-        except Exception as e:
-            st.error(f"{name} verisi çekilemedi: {e}")
+            if not data.empty:
+                first_price = data.iloc[0]
+                normalized = ((data / first_price) - 1) * 100
+                df_temp = pd.DataFrame(normalized)
+                df_temp.columns = [name]
+                df_list.append(df_temp)
+        except:
+            pass
 
-    # Tüm verileri tarih bazında birleştir
     if df_list:
-        df_combined = pd.concat(df_list, axis=1)
-        
-        # Eksik verileri doldur (Hafta sonu borsa kapalıdır ama Kripto açıktır)
-        df_combined = df_combined.ffill() 
-        
-        # Enflasyon Çizgisi (Simülasyon: Yıllık %3.5 Dolar Enflasyonu)
-        # Günlük enflasyon etkisi: (1.035)^(1/365)
+        df_combined = pd.concat(df_list, axis=1).ffill()
         days = len(df_combined)
-        daily_inflation = (1.035**(1/365)) - 1
-        inflation_series = [( (1 + daily_inflation)**i - 1 ) * 100 for i in range(days)]
-        
-        # Tarih indeksine göre eşleşmesi için seriyi kes veya uydur
-        if len(inflation_series) > len(df_combined):
-            inflation_series = inflation_series[:len(df_combined)]
-            
-        df_combined['ABD Enflasyonu'] = inflation_series
-        
+        daily_inf = (1.035**(1/365)) - 1
+        inf_series = [((1 + daily_inf)**i - 1) * 100 for i in range(days)]
+        if len(inf_series) > len(df_combined): inf_series = inf_series[:len(df_combined)]
+        df_combined['ABD Enflasyonu'] = inf_series
         return df_combined
     return pd.DataFrame()
 
@@ -84,110 +52,175 @@ def get_current_btc_price():
     except:
         return 95000
 
-# --- 2. SIDEBAR & DB ---
+# --- 2. SOL PANEL: CÜZDAN & MODEL GİRİŞİ ---
 with st.sidebar:
-    st.header("⚙️ Portföy")
-    saved_btc, saved_usdt, saved_initial, saved_date_str = db.get_portfolio()
+    st.header("⚙️ Ayarlar")
     
-    # Tarih formatını güvenli hale getir
+    # --- A. API & MODEL SEÇİMİ (GÜNCELLENDİ) ---
+    api_key = st.text_input("Gemini API Key:", type="password", help="Google AI Studio'dan aldığınız anahtar.")
+    
+    # Model Listesi
+    available_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
+    
+    if api_key:
+        # Key varsa seçim kutusunu aktif et
+        selected_model_name = st.selectbox("Yapay Zeka Modeli:", available_models, index=0)
+        st.success(f"Model: {selected_model_name} aktif")
+    else:
+        # Key yoksa kutuyu pasif yap (disabled=True)
+        st.selectbox("Yapay Zeka Modeli:", ["Önce API Key Giriniz 🔒"], disabled=True)
+        selected_model_name = None
+
+    st.divider()
+
+    # --- B. CÜZDAN YÖNETİMİ ---
+    st.header("Cüzdan Yönetimi")
+    saved_btc, saved_usdt, saved_initial, saved_date_str = db.get_portfolio()
     try:
         start_date_obj = datetime.strptime(saved_date_str, "%Y-%m-%d").date()
     except:
-        start_date_obj = datetime.now().date() - timedelta(days=365) # Varsayılan 1 yıl önce
+        start_date_obj = datetime.now().date() - timedelta(days=365)
 
-    # API Key girişi ve Model Seçimi (Form dışına alındı)
-    api_key = st.text_input("Gemini API Key:", type="password")
-
-    selected_model_name = 'gemini-pro' # Varsayılan model
-
-    if api_key:
-        try:
-            genai.configure(api_key=api_key)
-            # Modelleri listele
-            models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            if models:
-                selected_model_name = st.selectbox("Yapay Zeka Modeli Seç:", models, index=0)
-        except Exception as e:
-            st.error(f"Model listesi alınamadı: {e}")
-
-    with st.form("settings"):
-        st.info(f"Başlangıç: {saved_date_str}")
-        
+    with st.form("portfolio_update"):
+        st.markdown("### 💰 Mevcut Varlıklar")
         new_btc = st.number_input("BTC Miktarı:", value=saved_btc, format="%.5f")
         new_usdt = st.number_input("Nakit ($):", value=saved_usdt)
-        new_initial = st.number_input("Ana Para ($):", value=saved_initial)
+        
+        st.markdown("### 📅 Başlangıç Bilgileri")
+        new_initial = st.number_input("Yatırılan Ana Para ($):", value=saved_initial)
         new_date = st.date_input("Başlangıç Tarihi:", value=start_date_obj)
         
-        if st.form_submit_button("Güncelle ve Hesapla"):
+        if st.form_submit_button("💾 Güncelle ve Kaydet"):
             db.update_portfolio(new_btc, new_usdt, new_initial, str(new_date))
+            st.toast("Cüzdan başarıyla güncellendi!", icon="✅")
             st.rerun()
 
-# --- 3. ANA EKRAN METRİKLERİ ---
+# --- 3. ÜST BİLGİ PANELİ (SCORECARD) ---
 current_price = get_current_btc_price()
 real_value = (saved_btc * current_price) + saved_usdt
 profit = real_value - saved_initial
 roi = (profit / saved_initial) * 100 if saved_initial > 0 else 0
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Toplam Varlık", f"${real_value:,.0f}")
-col2.metric("Net Kar/Zarar", f"${profit:,.0f}", delta=f"%{roi:.1f}")
-col3.metric("BTC Fiyatı", f"${current_price:,.0f}")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Mevcut Toplam Varlık", f"${real_value:,.0f}")
+col2.metric("Toplam Kar/Zarar", f"${profit:,.0f}", delta=f"%{roi:.1f}")
+col3.metric("Ana Para", f"${saved_initial:,.0f}")
+col4.metric("Canlı BTC Fiyatı", f"${current_price:,.0f}")
 
 st.divider()
 
-# --- 4. GRAFİK VE ANALİZ (YENİ BÖLÜM) ---
-st.subheader(f"📊 Performans Karşılaştırması ({saved_date_str}'den beri)")
+# --- 4. SEKMELİ YAPI (Tabs) ---
+tab_past, tab_future, tab_history = st.tabs(["📊 Geçmiş Performans", "🔮 Gelecek Simülasyonu", "📜 Kayıtlı Analizler"])
 
-# Grafik Verilerini Getir
-if saved_initial > 0:
-    with st.spinner("Piyasa verileri indiriliyor (Altın, S&P 500)..."):
-        chart_data = get_benchmark_data(str(start_date_obj), saved_btc, saved_initial)
+# --- TAB 1: GEÇMİŞ GRAFİĞİ ---
+with tab_past:
+    st.subheader("Yatırımınız vs Piyasa")
+    if saved_initial > 0:
+        with st.spinner("Piyasa verileri getiriliyor..."):
+            chart_data = get_benchmark_data(str(start_date_obj), saved_btc, saved_initial)
+        if not chart_data.empty:
+            st.line_chart(chart_data, height=400)
+            
+            # Grafik Yorumlatma Butonu (Tab 1 İçin)
+            if st.button("Grafiği Yorumla 🧠", key="btn_chart_ai"):
+                if not api_key or not selected_model_name:
+                    st.error("Lütfen sol menüden API Key giriniz.")
+                else:
+                    try:
+                        genai.configure(api_key=api_key)
+                        model = genai.GenerativeModel(selected_model_name) # SEÇİLEN MODEL BURADA KULLANILIYOR
+                        
+                        last_vals = chart_data.iloc[-1].to_dict()
+                        context = f"""
+                        YATIRIM PERFORMANSI RAPORU:
+                        Tarih Aralığı: {saved_date_str} - Bugün
+                        
+                        GETİRİLER (%):
+                        {last_vals}
+                        
+                        GÖREV:
+                        Seçilen yapay zeka modeli ({selected_model_name}) olarak, kullanıcının performansını kıyasla.
+                        """
+                        with st.spinner(f'{selected_model_name} düşünüyor...'):
+                            resp = model.generate_content(context)
+                            st.info(resp.text)
+                    except Exception as e:
+                        st.error(f"Hata: {e}")
+
+        else:
+            st.warning("Grafik verisi yok.")
+    else:
+        st.info("Grafik için ana para girişi yapınız.")
+
+# --- TAB 2: GELECEK SİMÜLASYONU (FutureWallet) ---
+with tab_future:
+    st.subheader("What-If: Senaryo Analizi")
     
-    if not chart_data.empty:
-        # 1. Grafik Gösterimi
-        st.line_chart(chart_data, height=400)
-        
-        # 2. Sonuç Özeti
-        last_values = chart_data.iloc[-1]
-        
-        # En iyi ve en kötü performansı bul
-        best_asset = last_values.idxmax()
-        best_return = last_values.max()
-        
-        st.markdown(f"""
-        > 🏆 **Dönemin Kazananı:** **{best_asset}** (%{best_return:.1f} getiri ile).
-        > Sizin Bitcoin stratejinizin getirisi: **%{last_values['Bitcoin']:.1f}**.
-        """)
-        
-        # --- 5. AI YORUMU ---
-        if st.button("Bu Tabloyu Yorumla 🧠"):
-            if not api_key:
-                st.error("API Key gerekli.")
-            else:
+    col_sim_input, col_sim_result = st.columns([1, 1])
+    
+    with col_sim_input:
+        st.markdown("#### Hedef Fiyatı Belirle")
+        simulated_price = st.slider(
+            "Bitcoin ($) kaç olursa?",
+            min_value=int(current_price * 0.5),
+            max_value=int(current_price * 3.0),
+            value=int(current_price),
+            step=500
+        )
+        st.info(f"Senaryo Fiyatı: **${simulated_price:,.0f}**")
+
+    sim_total = (saved_btc * simulated_price) + saved_usdt
+    sim_diff = sim_total - real_value
+    
+    with col_sim_result:
+        st.markdown("#### Cüzdan Tahmini")
+        st.metric("Tahmini Toplam Varlık", f"${sim_total:,.2f}", delta=f"{sim_diff:+,.2f} $")
+    
+    st.divider()
+    
+    # AI Yorum ve Kaydetme
+    st.markdown(f"### 🧠 AI Danışman ({selected_model_name if selected_model_name else 'Devre Dışı'})")
+    
+    if st.button("Senaryoyu Analiz Et ve Kaydet 📝", key="btn_sim_ai"):
+        if not api_key or not selected_model_name:
+            st.error("Lütfen sol menüden API Key giriniz.")
+        else:
+            try:
                 genai.configure(api_key=api_key)
+                # KULLANICININ SEÇTİĞİ MODELİ YÜKLÜYORUZ
                 model = genai.GenerativeModel(selected_model_name)
                 
                 context = f"""
-                Sen bir portföy analistisin.
+                DURUM:
+                - Başlangıç: {saved_date_str}, Para: {saved_initial}$
+                - Şu an: {real_value}$
                 
-                Kullanıcı {saved_date_str} tarihinden beri yatırım yapıyor.
-                
-                PERFORMANS KARŞILAŞTIRMASI (Yüzdesel Getiriler):
-                - Bitcoin (Kullanıcı): %{last_values.get('Bitcoin', 0):.2f}
-                - Altın: %{last_values.get('Altın (Ons)', 0):.2f}
-                - S&P 500: %{last_values.get('S&P 500', 0):.2f}
-                - ABD Enflasyonu: %{last_values.get('ABD Enflasyonu', 0):.2f}
+                SENARYO:
+                - Beklenti: BTC {simulated_price}$ olacak.
+                - Sonuç Cüzdan: {sim_total}$ olacak.
                 
                 GÖREV:
-                Kullanıcının performansını diğer araçlarla kıyasla. Enflasyona karşı durumunu söyle.
-                Eğer Altın veya Borsa daha çok kazandırdıysa, "Çeşitlendirme yapabilirdin" gibi yapıcı bir eleştiri getir.
+                Kısa, net ve esprili bir yatırım tavsiyesi (YTD) ver.
                 """
                 
-                with st.spinner("Yapay zeka grafiği okuyor..."):
-                    resp = model.generate_content(context)
-                    st.info(resp.text)
+                with st.spinner(f'{selected_model_name} senaryoyu simüle ediyor...'):
+                    response = model.generate_content(context).text
+                    st.success(response)
+                    db.save_simulation(current_price, simulated_price, sim_total, response)
+                    st.toast("Kayıt Başarılı!", icon="💾")
                     
-                    # Sonucu DB'ye kaydet
-                    db.save_simulation(current_price, 0, real_value, resp.text)
+            except Exception as e:
+                st.error(f"Hata: {e}")
+
+# --- TAB 3: GEÇMİŞ TABLOSU ---
+with tab_history:
+    st.subheader("Geçmiş Analizler")
+    df_history = db.get_history()
+    if not df_history.empty:
+        st.dataframe(
+            df_history[['sim_date', 'simulated_price', 'total_value', 'ai_comment']],
+            hide_index=True,
+            use_container_width=True
+        )
     else:
-        st.warning("Grafik verisi oluşturulamadı. Tarih çok yeni veya piyasa verisi çekilemedi.")
+        st.info("Kayıt yok.")
