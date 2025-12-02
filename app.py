@@ -13,6 +13,15 @@ db.init_db()
 st.title("💎 FutureWallet: Geçmiş Analiz & Gelecek Simülasyonu")
 
 # --- 1. FONKSİYONLAR ---
+@st.cache_data(ttl=300)
+def get_gemini_models(api_key):
+    try:
+        genai.configure(api_key=api_key)
+        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        return models
+    except:
+        return []
+
 @st.cache_data(ttl=3600)
 def get_benchmark_data(start_date, btc_amount, initial_usd):
     """Geçmiş performans grafiği verilerini hazırlar"""
@@ -60,9 +69,12 @@ with st.sidebar:
     api_key = st.text_input("Gemini API Key:", type="password", help="Google AI Studio'dan aldığınız anahtar.")
     
     # Model Listesi
-    available_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
+    default_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
     
     if api_key:
+        fetched_models = get_gemini_models(api_key)
+        available_models = fetched_models if fetched_models else default_models
+
         # Key varsa seçim kutusunu aktif et
         selected_model_name = st.selectbox("Yapay Zeka Modeli:", available_models, index=0)
         st.success(f"Model: {selected_model_name} aktif")
@@ -119,7 +131,20 @@ with tab_past:
         with st.spinner("Piyasa verileri getiriliyor..."):
             chart_data = get_benchmark_data(str(start_date_obj), saved_btc, saved_initial)
         if not chart_data.empty:
-            st.line_chart(chart_data, height=400)
+            # Kullanıcı Seçimi
+            all_options = ['Bitcoin', 'Altın (Ons)', 'S&P 500', 'ABD Enflasyonu']
+            selected_options = st.multiselect(
+                "Grafikte Gösterilecek Veriler:",
+                options=all_options,
+                default=all_options
+            )
+
+            valid_selections = [col for col in selected_options if col in chart_data.columns]
+
+            if valid_selections:
+                st.line_chart(chart_data[valid_selections], height=400)
+            else:
+                st.warning("Görüntülenecek veri seçilmedi.")
             
             # Grafik Yorumlatma Butonu (Tab 1 İçin)
             if st.button("Grafiği Yorumla 🧠", key="btn_chart_ai"):
