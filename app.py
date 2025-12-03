@@ -28,17 +28,21 @@ def get_gemini_models(api_key):
         return []
 
 @st.cache_data(ttl=3600)
-def get_benchmark_data(start_date, btc_amount, initial_usd):
+def get_benchmark_data(start_date, btc_amount, usdt_amount, initial_usd):
     """Geçmiş performans grafiği verilerini hazırlar"""
     tickers = {'Bitcoin': 'BTC-USD', 'Altın (Ons)': 'GC=F', 'S&P 500': '^GSPC'}
     df_list = []
     
+    # Ham verileri tutacak sözlük
+    raw_data = {}
+
     for name, ticker in tickers.items():
         try:
             data = yf.download(ticker, start=start_date, progress=False)['Close']
             if isinstance(data, pd.DataFrame): data = data.iloc[:, 0]
             
             if not data.empty:
+                raw_data[name] = data
                 first_price = data.iloc[0]
                 normalized = ((data / first_price) - 1) * 100
                 df_temp = pd.DataFrame(normalized)
@@ -46,6 +50,18 @@ def get_benchmark_data(start_date, btc_amount, initial_usd):
                 df_list.append(df_temp)
         except:
             pass
+
+    # Cüzdan Hesabı (Eğer Bitcoin verisi varsa)
+    if 'Bitcoin' in raw_data and initial_usd > 0:
+        btc_prices = raw_data['Bitcoin']
+        # Tarihsel cüzdan değeri = (O günkü BTC Fiyatı * Şimdiki BTC Adedi) + Şimdiki Nakit
+        wallet_values = (btc_prices * btc_amount) + usdt_amount
+
+        # Normalize et (Kar/Zarar %)
+        wallet_normalized = ((wallet_values / initial_usd) - 1) * 100
+        df_wallet = pd.DataFrame(wallet_normalized)
+        df_wallet.columns = ['Cüzdanım']
+        df_list.append(df_wallet)
 
     if df_list:
         df_combined = pd.concat(df_list, axis=1).ffill()
@@ -141,10 +157,10 @@ with tab_past:
     st.subheader("Yatırımınız vs Piyasa")
     if saved_initial > 0:
         with st.spinner("Piyasa verileri getiriliyor..."):
-            chart_data = get_benchmark_data(str(start_date_obj), saved_btc, saved_initial)
+            chart_data = get_benchmark_data(str(start_date_obj), saved_btc, saved_usdt, saved_initial)
         if not chart_data.empty:
             # Kullanıcı Seçimi
-            all_options = ['Bitcoin', 'Altın (Ons)', 'S&P 500', 'ABD Enflasyonu']
+            all_options = ['Cüzdanım', 'Bitcoin', 'Altın (Ons)', 'S&P 500', 'ABD Enflasyonu']
             selected_options = st.multiselect(
                 "Grafikte Gösterilecek Veriler:",
                 options=all_options,
@@ -176,7 +192,9 @@ with tab_past:
                         {last_vals}
                         
                         GÖREV:
-                        Seçilen yapay zeka modeli ({selected_model_name}) olarak, kullanıcının performansını kıyasla.
+                        Seçilen yapay zeka modeli ({selected_model_name}) olarak, "Cüzdanım" performansını;
+                        Enflasyon, S&P 500 ve Altın ile karşılaştırarak değerlendir.
+                        Cüzdanın durumunu diğer yatırım araçlarına göre analiz et.
                         """
                         with st.spinner(f'{selected_model_name} düşünüyor...'):
                             resp = model.generate_content(context)
