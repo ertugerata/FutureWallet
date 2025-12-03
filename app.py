@@ -80,11 +80,34 @@ def get_current_btc_price():
         ticker = exchange.fetch_ticker('BTC/USDT')
         return ticker['last']
     except:
-        return 95000
+        return None
 
 # --- 2. SOL PANEL: CÜZDAN & MODEL GİRİŞİ ---
 with st.sidebar:
     st.header("⚙️ Ayarlar")
+
+    # --- FİYAT VERİSİ (MANUEL / OTOMATİK) ---
+    st.subheader("💰 Fiyat Ayarları")
+    use_manual_price = st.checkbox("Manuel BTC Fiyatı Kullan")
+
+    fetched_price = get_current_btc_price()
+
+    # Fiyat belirleme mantığı
+    if use_manual_price or fetched_price is None:
+        if fetched_price is None and not use_manual_price:
+            st.warning("⚠️ Fiyat verisi çekilemedi (Ağ hatası). Lütfen manuel giriniz.")
+
+        current_price = st.number_input(
+            "Güncel BTC Fiyatı ($):",
+            value=95000.0,
+            step=100.0,
+            format="%.2f"
+        )
+    else:
+        st.success(f"Borsa Fiyatı: ${fetched_price:,.2f}")
+        current_price = fetched_price
+
+    st.divider()
     
     # --- A. API & MODEL SEÇİMİ (GÜNCELLENDİ) ---
     # 12-FACTOR: Config (Env Var support with UI override)
@@ -136,7 +159,7 @@ with st.sidebar:
             st.rerun()
 
 # --- 3. ÜST BİLGİ PANELİ (SCORECARD) ---
-current_price = get_current_btc_price()
+# current_price sidebar'da tanımlandı
 real_value = (saved_btc * current_price) + saved_usdt
 profit = real_value - saved_initial
 roi = (profit / saved_initial) * 100 if saved_initial > 0 else 0
@@ -215,13 +238,53 @@ with tab_future:
     
     with col_sim_input:
         st.markdown("#### Hedef Fiyatı Belirle")
-        simulated_price = st.slider(
-            "Bitcoin ($) kaç olursa?",
-            min_value=int(current_price * 0.5),
-            max_value=int(current_price * 3.0),
-            value=int(current_price),
-            step=500
+
+        # Session state başlatma ve güncelleme kontrolü
+        if 'sim_price' not in st.session_state:
+            st.session_state.sim_price = int(current_price)
+            st.session_state.last_base_price = current_price
+
+        # Eğer güncel fiyat değiştiyse (örneğin manuel giriş ile), simülasyonu da resetle
+        if 'last_base_price' in st.session_state and st.session_state.last_base_price != current_price:
+             st.session_state.sim_price = int(current_price)
+             st.session_state.last_base_price = current_price
+
+        def update_slider():
+            st.session_state.sim_price = st.session_state.slider_key
+
+        def update_input():
+            st.session_state.sim_price = int(st.session_state.input_key)
+
+        min_p = int(current_price * 0.1) # Geniş aralık
+        max_p = int(current_price * 5.0)
+
+        # Değerin sınırlar içinde kaldığından emin ol
+        if st.session_state.sim_price < min_p: st.session_state.sim_price = min_p
+        if st.session_state.sim_price > max_p: st.session_state.sim_price = max_p
+
+        # Slider
+        st.slider(
+            "Bitcoin ($) kaç olursa? (Slider)",
+            min_value=min_p,
+            max_value=max_p,
+            value=st.session_state.sim_price,
+            step=500,
+            key='slider_key',
+            on_change=update_slider
         )
+
+        # Number Input
+        st.number_input(
+            "Bitcoin ($) kaç olursa? (Manuel)",
+            min_value=min_p,
+            max_value=max_p,
+            value=st.session_state.sim_price,
+            step=500,
+            key='input_key',
+            on_change=update_input
+        )
+
+        simulated_price = st.session_state.sim_price
         st.info(f"Senaryo Fiyatı: **${simulated_price:,.0f}**")
 
     sim_total = (saved_btc * simulated_price) + saved_usdt
