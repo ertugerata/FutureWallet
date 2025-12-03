@@ -5,6 +5,11 @@ import yfinance as yf
 import google.generativeai as genai
 from datetime import datetime, timedelta
 import db
+import os
+from dotenv import load_dotenv
+
+# --- 12-FACTOR: CONFIG (Environment Variables) ---
+load_dotenv()
 
 # --- SAYFA AYARLARI ---
 st.set_page_config(page_title="FutureWallet Ultimate", page_icon="💎", layout="wide")
@@ -66,7 +71,14 @@ with st.sidebar:
     st.header("⚙️ Ayarlar")
     
     # --- A. API & MODEL SEÇİMİ (GÜNCELLENDİ) ---
-    api_key = st.text_input("Gemini API Key:", type="password", help="Google AI Studio'dan aldığınız anahtar.")
+    # 12-FACTOR: Config (Env Var support with UI override)
+    env_api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = st.text_input(
+        "Gemini API Key:",
+        value=env_api_key if env_api_key else "",
+        type="password",
+        help="Google AI Studio'dan aldığınız anahtar. (.env dosyasında GOOGLE_API_KEY tanımlanabilir)"
+    )
     
     # Model Listesi
     default_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
@@ -142,7 +154,7 @@ with tab_past:
             valid_selections = [col for col in selected_options if col in chart_data.columns]
 
             if valid_selections:
-                st.line_chart(chart_data[valid_selections], height=400)
+                st.line_chart(chart_data[valid_selections], height=400, use_container_width=True)
             else:
                 st.warning("Görüntülenecek veri seçilmedi.")
             
