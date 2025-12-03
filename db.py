@@ -27,6 +27,15 @@ def init_db():
                     ai_comment TEXT
                 )''')
     
+    # YENİ: Analiz ve Yorum Geçmişi
+    c.execute('''CREATE TABLE IF NOT EXISTS analyses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    analysis_type TEXT,
+                    input_summary TEXT,
+                    ai_response TEXT,
+                    created_at TIMESTAMP
+                )''')
+
     # Varsayılan değerler
     c.execute('SELECT count(*) FROM portfolio')
     if c.fetchone()[0] == 0:
@@ -73,3 +82,27 @@ def get_history():
     df = pd.read_sql_query("SELECT * FROM history ORDER BY sim_date DESC", conn)
     conn.close()
     return df
+
+# --- YENİ FONKSİYONLAR ---
+
+def save_analysis(analysis_type, input_summary, ai_response):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('''INSERT INTO analyses (analysis_type, input_summary, ai_response, created_at)
+                 VALUES (?, ?, ?, ?)''',
+              (analysis_type, input_summary, ai_response, datetime.now()))
+    conn.commit()
+    conn.close()
+
+def get_analyses():
+    conn = sqlite3.connect(DB_NAME)
+    df = pd.read_sql_query("SELECT * FROM analyses ORDER BY created_at DESC", conn)
+    conn.close()
+    return df
+
+def delete_analysis(analysis_id):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("DELETE FROM analyses WHERE id=?", (analysis_id,))
+    conn.commit()
+    conn.close()
