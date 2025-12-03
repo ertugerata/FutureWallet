@@ -1,15 +1,16 @@
-# 💰 FutureWallet: AI Finansal Asistan
+# 💰 FutureWallet Ultimate: AI Finansal Asistan
 
-FutureWallet, Bitcoin varlıklarınızın değerini gerçek zamanlı fiyatlar üzerinden takip etmenizi, farklı fiyat senaryolarında ("What-If") toplam varlık değerinizin nasıl değişeceğini simüle etmenizi ve yapay zeka desteğiyle bu senaryoları analiz etmenizi sağlayan bir MVP (Minimum Viable Product) uygulamasıdır.
+FutureWallet Ultimate, Bitcoin varlıklarınızın değerini gerçek zamanlı fiyatlar üzerinden takip etmenizi, geçmiş performansınızı diğer yatırım araçlarıyla (Altın, S&P 500, Enflasyon) kıyaslamanızı ve yapay zeka desteğiyle işlem stratejilerinizi analiz etmenizi sağlayan kapsamlı bir finansal simülasyon uygulamasıdır.
 
 ## 🚀 Özellikler
 
-- **Gerçek Zamanlı Veri:** CoinGecko API kullanarak anlık Bitcoin (BTC) fiyatını çeker.
-- **Varlık Yönetimi:** Elinizdeki BTC miktarını ve nakit (USDT) tutarını girebilirsiniz.
-- **Senaryo Analizi:** Bitcoin fiyatı değiştiğinde toplam varlığınızın ne olacağını interaktif bir slider ile simüle edebilirsiniz.
-- **Yapay Zeka Görüşü:** Oluşturduğunuz senaryoyu Google Gemini 1.5 Pro modeli ile analiz ettirip, risk ve strateji önerileri alabilirsiniz.
-- **Kar/Zarar Hesaplama:** Mevcut durum ile simülasyon arasındaki farkı anlık olarak hesaplar ve gösterir.
-- **Görselleştirme:** Fiyat değişimine bağlı varlık eğrisini grafik üzerinde gösterir.
+- **Gerçek Zamanlı ve Esnek Veri:** Binance API (`ccxt`) üzerinden anlık Bitcoin (BTC) fiyatını çeker. API erişim sorunu durumunda manuel fiyat girişi desteği sunar.
+- **Detaylı Geçmiş Analizi:** Cüzdan performansınızı **S&P 500**, **Altın** ve **ABD Enflasyonu** ile grafik üzerinde karşılaştırır.
+- **İşlem Geçmişi Analizi:** Borsa veya Excel'den aldığınız işlem geçmişini (CSV/Excel) yükleyerek yapay zekaya (Gemini) stratejinizi, kar/zarar durumunuzu ve risk yönetiminizi yorumlatabilirsiniz.
+- **Senaryo Analizi (What-If):** "Bitcoin X dolar olursa varlığım ne olur?" sorusuna interaktif slider ve manuel giriş ile yanıt bulabilirsiniz.
+- **Dinamik Yapay Zeka Desteği:** API anahtarınız ile mevcut **Google Gemini** modelleri (Flash, Pro vb.) arasından seçim yapabilir, analizlerinizi istediğiniz modelle gerçekleştirebilirsiniz.
+- **Kayıtlı Analizler:** Yaptığınız tüm simülasyonları ve yapay zeka yorumlarını veritabanına (`SQLite`) kaydeder, dilediğiniz zaman geçmiş analizlerinizi inceleyebilir veya silebilirsiniz.
+- **Mobil Uyumlu Arayüz:** Tüm grafikler ve tablolar mobil cihazlarda rahatça görüntülenebilecek şekilde optimize edilmiştir.
 
 ## 🛠️ Teknolojiler
 
@@ -17,8 +18,11 @@ Bu proje aşağıdaki teknolojiler kullanılarak geliştirilmiştir:
 - [Python](https://www.python.org/)
 - [Streamlit](https://streamlit.io/) (Arayüz ve uygulama mantığı)
 - [Pandas](https://pandas.pydata.org/) & [NumPy](https://numpy.org/) (Veri işleme)
-- [CoinGecko API](https://www.coingecko.com/en/api) (Fiyat verisi)
-- [Google Generative AI (Gemini 1.5 Pro)](https://ai.google.dev/) (Yapay zeka analizi)
+- [CCXT](https://github.com/ccxt/ccxt) (Binance Borsa Verisi)
+- [yfinance](https://pypi.org/project/yfinance/) (S&P 500 ve Altın Verisi)
+- [Google Generative AI](https://ai.google.dev/) (Gemini Modelleri)
+- [SQLite](https://www.sqlite.org/index.html) (Veri Saklama)
+- [OpenPyXL](https://openpyxl.readthedocs.io/) & [xlrd](https://xlrd.readthedocs.io/) (Excel Desteği)
 
 ## 📦 Kurulum & Çalıştırma
 
@@ -72,4 +76,6 @@ Gelecekte tam teşekküllü bir mobil uygulamaya (iOS/Android) geçiş süreci i
 
 - `app.py`: Uygulamanın ana kaynak kodu.
 - `requirements.txt`: Proje bağımlılıklarını içeren dosya.
+- `db.py`: Veritabanı işlemleri (SQLite).
 - `shell.nix`: Nix ortam yapılandırması.
+- `check_model.py`: Model ve API kontrol betiği.
