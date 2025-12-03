@@ -222,6 +222,9 @@ with tab_past:
                         with st.spinner(f'{selected_model_name} düşünüyor...'):
                             resp = model.generate_content(context)
                             st.info(resp.text)
+                            # Veritabanına kaydet
+                            db.save_analysis("Grafik Yorumu", f"Tarih: {datetime.now().strftime('%Y-%m-%d %H:%M')}", resp.text)
+                            st.toast("Yorum kaydedildi!", icon="💾")
                     except Exception as e:
                         st.error(f"Hata: {e}")
 
@@ -367,31 +370,41 @@ with tab_analysis:
                         genai.configure(api_key=api_key)
                         model = genai.GenerativeModel(selected_model_name)
 
-                        # Veriyi string'e çevir (Token limitine dikkat etmek gerekebilir, şimdilik basit tutuyoruz)
-                        # İlk 50-100 satırı veya özetini göndermek daha güvenli olabilir ama
-                        # kullanıcı "belirli bir periyot" dediği için tümünü string olarak deniyoruz.
+                        # Veriyi string'e çevir
                         csv_data = df_tx.to_csv(index=False)
+
+                        # Kullanıcının belirttiği: "ilk giriş miktarını ve toplam kar olanını dikkate alarak"
+                        # Bu veriler CSV içinde olmayabilir, bu yüzden AI'a bunları hesaplamasını veya tahmin etmesini söylüyoruz.
 
                         context = f"""
                         GÖREV:
                         Aşağıdaki işlem geçmişi verisini analiz et ve bu yatırımcının stratejisini değerlendir.
 
-                        ANALİZ EDİLECEK NOKTALAR:
-                        1. Kar/Zarar durumu ve kazanma oranı (Win Rate).
-                        2. Risk yönetimi (Stop loss kullanılmış mı, giriş çıkışlar mantıklı mı?).
-                        3. Varsa sık yapılan hatalar (FOMO, panik satış vb. veriden çıkarılabiliyorsa).
-                        4. Genel strateji tavsiyesi ve puanlama (10 üzerinden).
+                        ÖNEMLİ KRİTERLER:
+                        1. **İlk Giriş Miktarı:** Veriden yatırımcının işleme başladığı ilk sermayeyi (Initial Investment) tespit etmeye çalış.
+                        2. **Toplam Kar/Zarar:** Tüm işlemler sonucunda toplamda ne kadar kar veya zarar edildiğini hesapla ve yorumla.
+
+                        DİĞER ANALİZ NOKTALARI:
+                        3. Kazanma oranı (Win Rate).
+                        4. Risk yönetimi (Stop loss kullanılmış mı?).
+                        5. Varsa sık yapılan hatalar (FOMO, panik satış vb.).
+                        6. Genel strateji tavsiyesi ve puanlama (10 üzerinden).
 
                         VERİ SETİ:
                         {csv_data}
 
-                        NOT: Cevabı Türkçe, profesyonel ama anlaşılır bir dille ver.
+                        NOT: Cevabı Türkçe, profesyonel ama anlaşılır bir dille ver. Hesaplamaların yaklaşık olabileceğini belirt.
                         """
 
                         with st.spinner(f'{selected_model_name} işlemlerini inceliyor...'):
                             response = model.generate_content(context).text
                             st.markdown("### 🤖 Yapay Zeka Değerlendirmesi")
                             st.write(response)
+
+                            # Sonucu Kaydet
+                            summary_txt = f"İşlem Dosyası: {uploaded_file.name} ({len(df_tx)} satır)"
+                            db.save_analysis("İşlem Analizi", summary_txt, response)
+                            st.toast("Analiz kaydedildi!", icon="💾")
 
                     except Exception as e:
                         st.error(f"Hata oluştu: {e}")
@@ -400,15 +413,38 @@ with tab_analysis:
             st.error(f"Dosya okunurken hata oluştu: {e}")
 
 
-# --- TAB 4: GEÇMİŞ TABLOSU ---
+# --- TAB 4: GEÇMİŞ TABLOSU (GÜNCELLENDİ) ---
 with tab_history:
-    st.subheader("Geçmiş Analizler")
-    df_history = db.get_history()
-    if not df_history.empty:
-        st.dataframe(
-            df_history[['sim_date', 'simulated_price', 'total_value', 'ai_comment']],
-            hide_index=True,
-            use_container_width=True
-        )
-    else:
-        st.info("Kayıt yok.")
+    st.header("📜 Kayıtlı Veriler")
+
+    tab_hist_sim, tab_hist_analysis = st.tabs(["🔮 Simülasyon Geçmişi", "🧠 Yapay Zeka Analizleri"])
+
+    with tab_hist_sim:
+        st.subheader("What-If Simülasyonları")
+        df_history = db.get_history()
+        if not df_history.empty:
+            st.dataframe(
+                df_history[['sim_date', 'simulated_price', 'total_value', 'ai_comment']],
+                hide_index=True,
+                use_container_width=True
+            )
+        else:
+            st.info("Kayıtlı simülasyon yok.")
+
+    with tab_hist_analysis:
+        st.subheader("Kaydedilen İşlem ve Grafik Analizleri")
+        df_analyses = db.get_analyses()
+
+        if not df_analyses.empty:
+            for index, row in df_analyses.iterrows():
+                with st.expander(f"{row['created_at']} - {row['analysis_type']}"):
+                    st.caption(f"**Girdi:** {row['input_summary']}")
+                    st.markdown(row['ai_response'])
+
+                    # Silme Butonu
+                    if st.button("🗑️ Sil", key=f"del_{row['id']}"):
+                        db.delete_analysis(row['id'])
+                        st.toast("Kayıt silindi.")
+                        st.rerun()
+        else:
+            st.info("Kayıtlı analiz yok.")
