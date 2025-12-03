@@ -173,7 +173,7 @@ col4.metric("Canlı BTC Fiyatı", f"${current_price:,.0f}")
 st.divider()
 
 # --- 4. SEKMELİ YAPI (Tabs) ---
-tab_past, tab_future, tab_history = st.tabs(["📊 Geçmiş Performans", "🔮 Gelecek Simülasyonu", "📜 Kayıtlı Analizler"])
+tab_past, tab_future, tab_analysis, tab_history = st.tabs(["📊 Geçmiş Performans", "🔮 Gelecek Simülasyonu", "📈 İşlem Analizi", "📜 Kayıtlı Analizler"])
 
 # --- TAB 1: GEÇMİŞ GRAFİĞİ ---
 with tab_past:
@@ -330,7 +330,77 @@ with tab_future:
             except Exception as e:
                 st.error(f"Hata: {e}")
 
-# --- TAB 3: GEÇMİŞ TABLOSU ---
+# --- TAB 3: İŞLEM ANALİZİ (YENİ) ---
+with tab_analysis:
+    st.subheader("📁 İşlem Geçmişi Analizi")
+    st.info("Borsa veya Excel'den aldığınız işlem geçmişini (CSV/Excel) yükleyin, yapay zeka stratejinizi değerlendirsin.")
+
+    uploaded_file = st.file_uploader("Dosya Yükle (CSV veya Excel)", type=['csv', 'xlsx', 'xls'])
+
+    if uploaded_file is not None:
+        try:
+            # Dosya uzantısına göre okuma
+            if uploaded_file.name.endswith('.csv'):
+                try:
+                    df_tx = pd.read_csv(uploaded_file)
+                    # Tek kolon geldiyse muhtemelen noktalı virgül (Excel CSV) dir
+                    if len(df_tx.columns) == 1:
+                        uploaded_file.seek(0)
+                        df_tx = pd.read_csv(uploaded_file, sep=';')
+                except:
+                    uploaded_file.seek(0)
+                    df_tx = pd.read_csv(uploaded_file, sep=';')
+            else:
+                # .xls için xlrd, .xlsx için openpyxl otomatik seçilir
+                df_tx = pd.read_excel(uploaded_file)
+
+            st.success(f"✅ {len(df_tx)} adet işlem yüklendi.")
+            st.dataframe(df_tx.head(10), use_container_width=True) # İlk 10 satırı göster
+
+            st.divider()
+
+            if st.button("Stratejimi Değerlendir 🧠", key="btn_tx_ai"):
+                if not api_key or not selected_model_name:
+                    st.error("Lütfen sol menüden API Key giriniz.")
+                else:
+                    try:
+                        genai.configure(api_key=api_key)
+                        model = genai.GenerativeModel(selected_model_name)
+
+                        # Veriyi string'e çevir (Token limitine dikkat etmek gerekebilir, şimdilik basit tutuyoruz)
+                        # İlk 50-100 satırı veya özetini göndermek daha güvenli olabilir ama
+                        # kullanıcı "belirli bir periyot" dediği için tümünü string olarak deniyoruz.
+                        csv_data = df_tx.to_csv(index=False)
+
+                        context = f"""
+                        GÖREV:
+                        Aşağıdaki işlem geçmişi verisini analiz et ve bu yatırımcının stratejisini değerlendir.
+
+                        ANALİZ EDİLECEK NOKTALAR:
+                        1. Kar/Zarar durumu ve kazanma oranı (Win Rate).
+                        2. Risk yönetimi (Stop loss kullanılmış mı, giriş çıkışlar mantıklı mı?).
+                        3. Varsa sık yapılan hatalar (FOMO, panik satış vb. veriden çıkarılabiliyorsa).
+                        4. Genel strateji tavsiyesi ve puanlama (10 üzerinden).
+
+                        VERİ SETİ:
+                        {csv_data}
+
+                        NOT: Cevabı Türkçe, profesyonel ama anlaşılır bir dille ver.
+                        """
+
+                        with st.spinner(f'{selected_model_name} işlemlerini inceliyor...'):
+                            response = model.generate_content(context).text
+                            st.markdown("### 🤖 Yapay Zeka Değerlendirmesi")
+                            st.write(response)
+
+                    except Exception as e:
+                        st.error(f"Hata oluştu: {e}")
+
+        except Exception as e:
+            st.error(f"Dosya okunurken hata oluştu: {e}")
+
+
+# --- TAB 4: GEÇMİŞ TABLOSU ---
 with tab_history:
     st.subheader("Geçmiş Analizler")
     df_history = db.get_history()
