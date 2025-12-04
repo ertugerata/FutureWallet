@@ -7,3 +7,5 @@ yfinance
 python-dotenv
 openpyxl
 xlrd
+xgboost
+scikit-learn
