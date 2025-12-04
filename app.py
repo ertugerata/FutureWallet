@@ -173,7 +173,7 @@ col4.metric("Canlı BTC Fiyatı", f"${current_price:,.0f}")
 st.divider()
 
 # --- 4. SEKMELİ YAPI (Tabs) ---
-tab_past, tab_future, tab_analysis, tab_history = st.tabs(["📊 Geçmiş Performans", "🔮 Gelecek Simülasyonu", "📈 İşlem Analizi", "📜 Kayıtlı Analizler"])
+tab_past, tab_future, tab_analysis, tab_prob, tab_history = st.tabs(["📊 Geçmiş Performans", "🔮 Gelecek Simülasyonu", "📈 İşlem Analizi", "🎲 Olasılık Hesapla", "📜 Kayıtlı Analizler"])
 
 # --- TAB 1: GEÇMİŞ GRAFİĞİ ---
 with tab_past:
@@ -413,7 +413,85 @@ with tab_analysis:
             st.error(f"Dosya okunurken hata oluştu: {e}")
 
 
-# --- TAB 4: GEÇMİŞ TABLOSU (GÜNCELLENDİ) ---
+# --- TAB 4: OLASILIK HESAPLA (YENİ) ---
+with tab_prob:
+    st.subheader("🎲 Bitcoin Hedef Fiyat Olasılık Hesaplayıcısı")
+    st.info("Makine öğrenmesi (XGBoost) kullanarak Bitcoin'in belirli bir süre içinde hedef fiyata ulaşma olasılığını hesaplar.")
+
+    col_prob_input, col_prob_result = st.columns([1, 1])
+
+    with col_prob_input:
+        st.markdown("### 🎯 Hedef Ayarları")
+
+        prob_target_price = st.number_input(
+            "Hedef Fiyat ($):",
+            min_value=1000.0,
+            value=100000.0,
+            step=500.0,
+            format="%.0f"
+        )
+
+        prob_days = st.slider(
+            "Vade (Gün):",
+            min_value=1,
+            max_value=90,
+            value=10,
+            help="Tahminin kaç gün içinde gerçekleşmesini bekliyorsunuz?"
+        )
+
+        calc_btn = st.button("Olasılığı Hesapla 🚀", type="primary")
+
+    with col_prob_result:
+        if calc_btn:
+            # Dinamik import
+            try:
+                import importlib
+                future_price = importlib.import_module("future-price")
+                importlib.reload(future_price) # Kod değişirse diye reload
+
+                with st.spinner("Veriler indiriliyor ve model eğitiliyor... (Bu işlem biraz sürebilir)"):
+                    result = future_price.predict_probability(
+                        symbol="BTC-USD",
+                        target_price=prob_target_price,
+                        days=prob_days
+                    )
+
+                if result["success"]:
+                    st.markdown("### 📊 Sonuçlar")
+
+                    prob_val = result["probability"]
+
+                    # Renkli gösterim
+                    if prob_val > 0.7:
+                        color = "green"
+                        msg = "Yüksek İhtimal"
+                    elif prob_val > 0.4:
+                        color = "orange"
+                        msg = "Orta İhtimal"
+                    else:
+                        color = "red"
+                        msg = "Düşük İhtimal"
+
+                    st.metric("Gerçekleşme İhtimali", f"%{prob_val*100:.1f}", delta=msg, delta_color="normal")
+                    st.caption(f"Model Doğruluğu (Son 200 Gün): %{result['accuracy']*100:.1f}")
+
+                    if result.get("required_increase", 0) > 0:
+                        st.info(f"Hedefe ulaşmak için gereken artış: **%{result['required_increase']*100:.2f}**")
+                    else:
+                        st.success("Fiyat zaten hedefin üzerinde!")
+
+                    # Özellik Önem Düzeyleri
+                    st.markdown("#### 🔑 Etkili Faktörler")
+                    imp_df = pd.DataFrame.from_dict(result["feature_importances"], orient='index', columns=['Önem'])
+                    st.bar_chart(imp_df)
+
+                else:
+                    st.error(f"Hata: {result['message']}")
+
+            except Exception as e:
+                st.error(f"Modül yüklenirken hata oluştu: {e}")
+
+# --- TAB 5: GEÇMİŞ TABLOSU (GÜNCELLENDİ) ---
 with tab_history:
     st.header("📜 Kayıtlı Veriler")
 
