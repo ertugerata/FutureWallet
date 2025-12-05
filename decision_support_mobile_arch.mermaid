@@ -1,0 +1,69 @@
+graph TB
+    subgraph "Kullanıcı Katmanı"
+        A[📱 iOS/Android App<br/>Flutter]
+        B[💻 Web Dashboard<br/>React]
+    end
+    
+    subgraph "API Gateway & Auth"
+        C[Kong/Nginx<br/>Rate Limit: 100/min]
+        D[Firebase Auth<br/>JWT Token]
+    end
+    
+    subgraph "Backend Services FastAPI"
+        E[User Service<br/>Profile & Settings]
+        F[Portfolio Service<br/>Multi-Asset Manager]
+        G[Decision AI Service<br/>Gemini Integration]
+        H[Market Data Service<br/>Real-time Prices]
+        I[Analytics Service<br/>ML Models]
+        J[Notification Service<br/>Push/Email]
+    end
+    
+    subgraph "Data Layer"
+        K[(PostgreSQL<br/>User Data<br/>Transactions)]
+        L[(Redis Cache<br/>Price Cache<br/>Session)]
+        M[(MongoDB<br/>AI Logs<br/>Analytics)]
+        N[S3/Cloud Storage<br/>Documents<br/>Reports]
+    end
+    
+    subgraph "External APIs"
+        O[Binance<br/>Coinbase<br/>Crypto Data]
+        P[Yahoo Finance<br/>Stock & Commodity]
+        Q[Google AI<br/>Gemini Models]
+        R[Twitter/Reddit<br/>Sentiment Data]
+    end
+    
+    subgraph "Arka Plan İşler"
+        S[Celery Workers<br/>Price Updates<br/>AI Analysis<br/>Reports]
+    end
+    
+    A --> C
+    B --> C
+    C --> D
+    D --> E
+    D --> F
+    D --> G
+    D --> H
+    D --> I
+    D --> J
+    
+    E --> K
+    F --> K
+    F --> L
+    G --> M
+    H --> L
+    I --> M
+    
+    H --> O
+    H --> P
+    G --> Q
+    I --> R
+    
+    F --> N
+    J --> S
+    S --> J
+    
+    style C fill:#ff6b6b,color:#fff
+    style D fill:#4ecdc4,color:#fff
+    style G fill:#95e1d3,color:#000
+    style Q fill:#ffe66d,color:#000
+    style K fill:#a8dadc,color:#000
