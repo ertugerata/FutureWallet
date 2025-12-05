@@ -39,22 +39,40 @@ class AssetManager:
             
             if config['source'] == 'ccxt':
                 # Kripto için Binance
-                ticker = self.exchange.fetch_ticker(f"{symbol}/USDT")
-                return ticker['last']
+                # Binance REST API bazen TR'den bloklanabilir veya hata verebilir
+                try:
+                    ticker = self.exchange.fetch_ticker(f"{symbol}/USDT")
+                    return ticker['last']
+                except Exception as e:
+                    # Fallback to yfinance if ccxt fails (e.g. BTC-USD)
+                    # print(f"CCXT Error ({symbol}): {e}, trying yfinance...")
+                    return self._get_yfinance_price(f"{symbol}-USD")
             
             elif config['source'] == 'yfinance':
                 # Borsa/Emtia/Forex için Yahoo Finance
                 full_symbol = f"{symbol}{config['prefix']}"
-                data = yf.download(full_symbol, period="1d", progress=False)
-                
-                if not data.empty:
-                    return float(data['Close'].iloc[-1])
+                return self._get_yfinance_price(full_symbol)
                 
             return None
             
         except Exception as e:
             print(f"Fiyat çekme hatası ({symbol}): {e}")
             return None
+
+    def _get_yfinance_price(self, symbol: str) -> float:
+        try:
+            # period='1d' fetches the most recent data
+            data = yf.download(symbol, period="1d", progress=False)
+            if not data.empty:
+                # 'Close' might be multi-index or simple series depending on yfinance version
+                # Ensure we get a scalar
+                val = data['Close'].iloc[-1]
+                if isinstance(val, pd.Series):
+                    val = val.iloc[0]
+                return float(val)
+        except Exception as e:
+            print(f"YFinance Error ({symbol}): {e}")
+        return None
     
     def get_historical_data(self, symbol: str, asset_type: str, 
                            days: int = 365) -> pd.DataFrame:
@@ -65,25 +83,34 @@ class AssetManager:
             config = self.ASSET_TYPES[asset_type]
             start_date = datetime.now() - timedelta(days=days)
             
+            # Prefer yfinance for historical data generally as it's easier for plotting (except maybe very specific crypto)
             if config['source'] == 'yfinance':
                 full_symbol = f"{symbol}{config['prefix']}"
                 data = yf.download(full_symbol, start=start_date, progress=False)
                 return data
             
             elif config['source'] == 'ccxt':
-                # CCXT için OHLCV verisi
-                ohlcv = self.exchange.fetch_ohlcv(
-                    f"{symbol}/USDT", 
-                    timeframe='1d', 
-                    limit=days
-                )
-                df = pd.DataFrame(
-                    ohlcv, 
-                    columns=['timestamp', 'open', 'high', 'low', 'close', 'volume']
-                )
-                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-                df.set_index('timestamp', inplace=True)
-                return df
+                # Try CCXT first
+                try:
+                    ohlcv = self.exchange.fetch_ohlcv(
+                        f"{symbol}/USDT",
+                        timeframe='1d',
+                        limit=days
+                    )
+                    df = pd.DataFrame(
+                        ohlcv,
+                        columns=['timestamp', 'open', 'high', 'low', 'close', 'volume']
+                    )
+                    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+                    df.set_index('timestamp', inplace=True)
+                    # Rename close to Close to match yfinance
+                    df.rename(columns={'close': 'Close'}, inplace=True)
+                    return df
+                except Exception:
+                    # Fallback to yfinance for crypto history if binance fails
+                    full_symbol = f"{symbol}-USD"
+                    data = yf.download(full_symbol, start=start_date, progress=False)
+                    return data
                 
         except Exception as e:
             print(f"Veri çekme hatası: {e}")
@@ -119,6 +146,15 @@ class AssetManager:
                     'value': value,
                     'type': info['type']
                 }
+            else:
+                # If price fails, keep 0 but log it
+                details[symbol] = {
+                    'price': 0,
+                    'amount': info['amount'],
+                    'value': 0,
+                    'type': info['type'],
+                    'error': 'Price fetch failed'
+                }
         
         return {
             'total': total_value,
@@ -152,34 +188,18 @@ class AssetManager:
             
             if not data.empty:
                 # Kapanış fiyatlarını normalize et (%0'dan başlasın)
-                close_col = 'Close' if 'Close' in data.columns else 'close'
-                normalized = ((data[close_col] / data[close_col].iloc[0]) - 1) * 100
-                performance[item['symbol']] = normalized
+                close_col = 'Close'
+                if close_col not in data.columns:
+                     # sometimes case differs or multi-index
+                     if 'close' in data.columns: close_col = 'close'
+
+                if close_col in data.columns:
+                    series = data[close_col]
+                    if isinstance(series, pd.DataFrame):
+                        series = series.iloc[:, 0]
+
+                    first_val = series.iloc[0]
+                    normalized = ((series / first_val) - 1) * 100
+                    performance[item['symbol']] = normalized
         
         return performance
-
-
-# Örnek Kullanım
-if __name__ == "__main__":
-    manager = AssetManager()
-    
-    # Çoklu portföy
-    my_portfolio = {
-        'BTC': {'type': 'crypto', 'amount': 0.5},
-        'THYAO': {'type': 'stock_tr', 'amount': 100},
-        'GC=F': {'type': 'commodity', 'amount': 10},  # Altın (ons)
-        'EURUSD': {'type': 'forex', 'amount': 1000}
-    }
-    
-    result = manager.calculate_portfolio_value(my_portfolio)
-    print(f"Toplam Portföy Değeri: ${result['total']:,.2f}")
-    
-    # Karşılaştırmalı performans
-    comparison = manager.compare_performance([
-        {'symbol': 'BTC', 'type': 'crypto'},
-        {'symbol': 'XU100', 'type': 'stock_tr'},
-        {'symbol': 'GC=F', 'type': 'commodity'}
-    ], days=365)
-    
-    print("\nYıllık Performans:")
-    print(comparison.tail())
