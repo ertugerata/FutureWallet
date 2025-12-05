@@ -56,7 +56,7 @@ def render_future_simulation_view(current_btc_price, saved_btc, saved_usdt, real
         if st.button("Olasılık Hesapla 🚀"):
             try:
                 # Dynamic import to avoid top-level issues and allow hot-reloading logic if needed
-                future_price = importlib.import_module("future-price")
+                future_price = importlib.import_module("future_price")
                 importlib.reload(future_price)
 
                 with st.spinner("Model geçmiş verileri analiz ediyor..."):

@@ -9,3 +9,6 @@ openpyxl
 xlrd
 xgboost
 scikit-learn
+flask
+flask-jwt-extended
+flask-cors
