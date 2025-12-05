@@ -15,13 +15,13 @@ def render_future_simulation_view(current_btc_price, saved_btc, saved_usdt, real
     st.info("Aşağıdaki kaydırıcıyı kullanarak belirlediğiniz hedef fiyat, hem portföy simülasyonunda hem de olasılık hesaplamasında kullanılacaktır.")
 
     if 'sim_price' not in st.session_state:
-        st.session_state.sim_price = int(current_btc_price) if current_btc_price > 0 else 50000
+        st.session_state.sim_price = float(current_btc_price) if current_btc_price > 0 else 50000.0
 
-    # Unified Slider and Input Synchronization
-    target_price = st.slider("Bitcoin Hedef / Senaryo Fiyatı ($)",
-                        min_value=int(current_btc_price * 0.1) if current_btc_price > 0 else 1000,
-                        max_value=int(current_btc_price * 5) if current_btc_price > 0 else 200000,
-                        value=st.session_state.sim_price, step=500, key="sim_slider")
+    # Unified Input Synchronization
+    target_price = st.number_input("Bitcoin Hedef / Senaryo Fiyatı ($)",
+                        min_value=0.0,
+                        value=float(st.session_state.sim_price),
+                        step=100.0, format="%.2f", key="sim_input")
     st.session_state.sim_price = target_price
 
 
