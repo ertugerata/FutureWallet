@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 # Yeni modüller
 from multi_asset_manager import AssetManager
 from decision_support_ai import DecisionSupportAI
+from views.future_simulation_view import render_future_simulation_view
 
 # --- 12-FACTOR: CONFIG (Environment Variables) ---
 load_dotenv()
@@ -161,12 +162,11 @@ col4.metric("Canlı BTC Fiyatı", f"${current_btc_price:,.0f}")
 st.divider()
 
 # --- 4. SEKMELİ YAPI ---
-tab_portfolio, tab_past, tab_future, tab_analysis, tab_prob, tab_history = st.tabs([
+tab_portfolio, tab_past, tab_future_sim, tab_analysis, tab_history = st.tabs([
     "💼 Portföy & Karar Destek",
     "📊 Geçmiş Performans",
     "🔮 Gelecek Simülasyonu",
     "📈 İşlem Analizi",
-    "🎲 Olasılık Hesapla",
     "📜 Kayıtlar"
 ])
 
@@ -317,31 +317,9 @@ with tab_past:
         else:
             st.warning("Veri çekilemedi.")
 
-# --- TAB 3: GELECEK SİMÜLASYONU ---
-with tab_future:
-    st.subheader("What-If: Senaryo Analizi")
-    
-    col_sim_input, col_sim_result = st.columns([1, 1])
-    
-    with col_sim_input:
-        if 'sim_price' not in st.session_state:
-            st.session_state.sim_price = int(current_btc_price) if current_btc_price > 0 else 50000
-
-        # Slider ve Input Senkronizasyonu
-        sim_val = st.slider("Bitcoin Fiyatı ($)",
-                            min_value=int(current_btc_price*0.1),
-                            max_value=int(current_btc_price*5),
-                            value=st.session_state.sim_price, step=500)
-        st.session_state.sim_price = sim_val
-
-        st.info(f"Senaryo Fiyatı: **${sim_val:,.0f}**")
-
-    sim_total = (saved_btc * sim_val) + saved_usdt
-    sim_diff = sim_total - real_value
-    
-    with col_sim_result:
-        st.markdown("#### Tahmini Değer")
-        st.metric("Toplam Varlık", f"${sim_total:,.2f}", delta=f"{sim_diff:+,.2f} $")
+# --- TAB 3: GELECEK SİMÜLASYONU (MODÜLER) ---
+with tab_future_sim:
+    render_future_simulation_view(current_btc_price, saved_btc, saved_usdt, real_value)
 
 # --- TAB 4: İŞLEM ANALİZİ ---
 with tab_analysis:
@@ -372,30 +350,7 @@ with tab_analysis:
         except Exception as e:
             st.error(f"Dosya okuma hatası: {e}")
 
-# --- TAB 5: OLASILIK HESAPLA ---
-with tab_prob:
-    st.subheader("🎲 Hedef Fiyat Olasılığı")
-    target_price = st.number_input("Hedef Fiyat ($)", value=100000.0)
-    days_pred = st.slider("Vade (Gün)", 1, 90, 30)
-
-    if st.button("Hesapla 🚀"):
-        try:
-            import importlib
-            future_price = importlib.import_module("future-price")
-            importlib.reload(future_price)
-
-            with st.spinner("Model çalışıyor..."):
-                res = future_price.predict_probability("BTC-USD", target_price, days_pred)
-
-            if res["success"]:
-                st.metric("Gerçekleşme İhtimali", f"%{res['probability']*100:.1f}")
-                st.bar_chart(res["feature_importances"])
-            else:
-                st.error(res["message"])
-        except Exception as e:
-            st.error(f"Modül hatası: {e}")
-
-# --- TAB 6: KAYITLAR ---
+# --- TAB 5: KAYITLAR ---
 with tab_history:
     st.subheader("Geçmiş Analizler")
     df_analyses = db.get_analyses()
