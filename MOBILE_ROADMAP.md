@@ -5,6 +5,7 @@ Bu belge, **FutureWallet** projesinin mevcut Streamlit prototipinden tam teşekk
 ## 📊 Mevcut Durum (Streamlit Prototipi)
 
 Şu anki kod tabanı (`app.py`), aşağıdaki özelliklerle çalışan kararlı bir prototiptir ve mobil dönüşüm için gerekli iş mantığını barındırmaktadır:
+*   **Mimari:** İş mantığı (`services/`) ve arayüz (`views/`) katmanlarına ayrılmış modüler yapı.
 *   **Yapay Zeka:** Google Gemini 1.5 Flash/Pro entegrasyonu (Model seçimi, Chat analizi).
 *   **Makine Öğrenmesi:** XGBoost ile fiyat hedefi olasılık hesaplaması (`future-price.py`).
 *   **Veri Analizi:** İşlem geçmişi (CSV/Excel) yükleme ve analiz etme.
@@ -14,29 +15,27 @@ Bu belge, **FutureWallet** projesinin mevcut Streamlit prototipinden tam teşekk
 
 ---
 
-## 🗺️ Faz 1: Hazırlık ve Backend Ayrıştırması (Ay 1-2)
+## 🗺️ Faz 1: Backend API ve Mikroservis Dönüşümü (Ay 1-2)
 
-Mevcut "monolitik" yapı (Streamlit) API tabanlı bir mimariye dönüştürülecektir.
+Kod tabanı modüler hale getirilmiştir (`services/` klasörü). Bir sonraki adım, bu servisleri bir API arkasında sunmaktır.
 
-### 1. Backend API Geliştirme (⏳ Beklemede)
-*   **Hedef:** `app.py` ve `future-price.py` içindeki iş mantığını (Business Logic) FastAPI veya Flask servisine taşımak.
+### 1. Backend API Geliştirme (⏳ Sırada)
+*   **Hedef:** `services/` altındaki Python sınıflarını FastAPI veya Flask framework'ü ile dışa açmak.
 *   **Yapılacaklar:**
-    *   [ ] `get_benchmark_data` (Yahoo Finance) ve `get_current_btc_price` (CCXT) fonksiyonlarının servise taşınması.
-    *   [ ] Gemini AI entegrasyonunun (`get_gemini_models`, prompt yönetimi) API endpoint'ine çevrilmesi.
-    *   [ ] Makine öğrenmesi modelinin (`predict_probability`) ayrı bir mikroservis veya endpoint olarak yapılandırılması.
-    *   [ ] CSV analiz mantığının (`tab_analysis`) backend servisine taşınması ve validasyon katmanı eklenmesi.
+    *   [ ] `PortfolioService` ve `DecisionSupportAI` sınıfları için REST API endpoint'lerinin yazılması.
+    *   [ ] `future-price.py` içindeki ML modelinin (`predict_probability`) bir API endpoint'i olarak sunulması.
+    *   [ ] JWT (JSON Web Token) ile temel kimlik doğrulama katmanının eklenmesi.
 
 ### 2. Veritabanı Migrasyonu (⚠️ Planlanıyor)
 *   **Mevcut:** Tek kullanıcılı SQLite (`futurewallet.db`).
 *   **Hedef:** Çok kullanıcılı PostgreSQL veya Firebase Firestore.
 *   **Yapılacaklar:**
-    *   [ ] SQLite verilerinin şema yapısının analizi.
-    *   [ ] Kullanıcı kimlik doğrulama (Auth) tablolarının eklenmesi.
-    *   [ ] API üzerinden veritabanı erişim katmanının (ORM) yazılması.
+    *   [ ] SQLite verilerinin şema yapısının analizi ve yeni veritabanına aktarımı.
+    *   [ ] Kullanıcı tablosu ve oturum yönetimi eklenmesi.
 
 ## 📱 Faz 2: Mobil Uygulama Geliştirme (Ay 3-5)
 
-Kullanıcı kitlesine ve bütçeye göre teknoloji seçimi yapılacaktır.
+API hazır olduktan sonra, mobil uygulama geliştirme süreci başlayacaktır.
 
 ### Teknoloji Seçenekleri
 *   **Cross-Platform (Önerilen):** Flutter (Dart) veya React Native.
@@ -56,7 +55,7 @@ Kullanıcı kitlesine ve bütçeye göre teknoloji seçimi yapılacaktır.
 
 ## ✅ Özet Kontrol Listesi
 
-### Tamamlanan (Prototip Aşamasında)
+### Tamamlanan
 - [x] Temel Cüzdan Takibi ve Karşılaştırmalı Grafikler (BTC, Altın, S&P 500).
 - [x] Google Gemini AI Entegrasyonu (Dinamik Model Seçimi).
 - [x] XGBoost ile Olasılık Hesaplayıcısı (Machine Learning).
@@ -64,6 +63,7 @@ Kullanıcı kitlesine ve bütçeye göre teknoloji seçimi yapılacaktır.
 - [x] SQLite ile Veri Kalıcılığı (Analiz ve Simülasyon Geçmişi).
 - [x] Environment Variable Yönetimi (`.env` ve Sidebar Fallback).
 - [x] Mobil Uyumlu UI Ayarları (Streamlit `use_container_width`).
+- [x] **Kod Tabanı Refactoring (Services & Views Ayrıştırması).**
 
 ### Yapılacaklar (Mobil Dönüşüm)
 - [ ] Backend API projesinin oluşturulması (FastAPI).
