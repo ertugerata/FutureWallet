@@ -1,12 +1,24 @@
 """
-AI-Powered Decision Support Engine
+AI-Powered Decision Support Service
 Yatırım kararları için akıllı öneri sistemi
 """
 
 import google.generativeai as genai
-from typing import Dict, List
+from typing import Dict, List, Optional
 import pandas as pd
 import numpy as np
+
+def get_gemini_models(api_key: str) -> List[str]:
+    """
+    Lists available Gemini models that support content generation.
+    """
+    try:
+        genai.configure(api_key=api_key)
+        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        return models
+    except Exception as e:
+        print(f"Error fetching models: {e}")
+        return []
 
 class DecisionSupportAI:
     """
@@ -317,43 +329,3 @@ class DecisionSupportAI:
             }
         
         return strategy
-
-
-# Örnek Kullanım
-if __name__ == "__main__":
-    # Sahte API key ile test
-    ai = DecisionSupportAI("TEST_API_KEY")
-    
-    # Portföy analizi
-    test_portfolio = {
-        'BTC': {
-            'type': 'crypto',
-            'value': 50000,
-            'returns': np.random.normal(0.001, 0.03, 100).tolist()
-        },
-        'THYAO': {
-            'type': 'stock_tr',
-            'value': 20000,
-            'returns': np.random.normal(0.0005, 0.015, 100).tolist()
-        },
-        'GC=F': {
-            'type': 'commodity',
-            'value': 10000,
-            'returns': np.random.normal(0.0002, 0.008, 100).tolist()
-        }
-    }
-    
-    risk_report = ai.analyze_portfolio_risk(test_portfolio)
-    print("Risk Raporu:", risk_report)
-    
-    # Çıkış stratejisi
-    position = {
-        'symbol': 'BTC',
-        'entry_price': 50000,
-        'current_price': 95000,
-        'amount': 0.5,
-        'entry_date': '2024-01-15'
-    }
-    
-    exit_plan = ai.generate_exit_strategy(position)
-    print("\nÇıkış Stratejisi:", exit_plan)
