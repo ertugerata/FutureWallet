@@ -6,20 +6,24 @@ FutureWallet Ultimate, Bitcoin varlıklarınızın değerini gerçek zamanlı fi
 
 - **Gerçek Zamanlı ve Esnek Veri:** Binance API (`ccxt`) üzerinden anlık Bitcoin (BTC) fiyatını çeker. API erişim sorunu durumunda manuel fiyat girişi desteği sunar.
 - **Detaylı Geçmiş Analizi:** Cüzdan performansınızı **S&P 500**, **Altın** ve **ABD Enflasyonu** ile grafik üzerinde karşılaştırır.
+- **Gelecek Simülasyonu & Yapay Zeka (ML):**
+    - **Manuel Simülasyon:** "Bitcoin X dolar olursa varlığım ne olur?" sorusuna yanıt verir.
+    - **XGBoost Tahmini:** Makine öğrenmesi modeli (`future-price.py`) kullanarak belirli bir fiyat hedefine ulaşma olasılığını hesaplar.
 - **İşlem Geçmişi Analizi:** Borsa veya Excel'den aldığınız işlem geçmişini (CSV/Excel) yükleyerek yapay zekaya (Gemini) stratejinizi, kar/zarar durumunuzu ve risk yönetiminizi yorumlatabilirsiniz.
-- **Senaryo Analizi (What-If):** "Bitcoin X dolar olursa varlığım ne olur?" sorusuna interaktif slider ve manuel giriş ile yanıt bulabilirsiniz.
 - **Dinamik Yapay Zeka Desteği:** API anahtarınız ile mevcut **Google Gemini** modelleri (Flash, Pro vb.) arasından seçim yapabilir, analizlerinizi istediğiniz modelle gerçekleştirebilirsiniz.
 - **Kayıtlı Analizler:** Yaptığınız tüm simülasyonları ve yapay zeka yorumlarını veritabanına (`SQLite`) kaydeder, dilediğiniz zaman geçmiş analizlerinizi inceleyebilir veya silebilirsiniz.
+- **Modüler Mimari:** Uygulama, iş mantığı (`services/`) ve arayüz (`views/`) katmanlarına ayrılarak mobil geliştirmeye hazır hale getirilmiştir.
 - **Mobil Uyumlu Arayüz:** Tüm grafikler ve tablolar mobil cihazlarda rahatça görüntülenebilecek şekilde optimize edilmiştir.
 
 ## 🛠️ Teknolojiler
 
 Bu proje aşağıdaki teknolojiler kullanılarak geliştirilmiştir:
-- [Python](https://www.python.org/)
-- [Streamlit](https://streamlit.io/) (Arayüz ve uygulama mantığı)
-- [Pandas](https://pandas.pydata.org/) & [NumPy](https://numpy.org/) (Veri işleme)
-- [CCXT](https://github.com/ccxt/ccxt) (Binance Borsa Verisi)
-- [yfinance](https://pypi.org/project/yfinance/) (S&P 500 ve Altın Verisi)
+- [Python](https://www.python.org/) (3.11+)
+- [Streamlit](https://streamlit.io/) (Arayüz)
+- [Pandas](https://pandas.pydata.org/) & [NumPy](https://numpy.org/) (Veri Analizi)
+- [XGBoost](https://xgboost.readthedocs.io/) & [Scikit-learn](https://scikit-learn.org/) (Makine Öğrenmesi)
+- [CCXT](https://github.com/ccxt/ccxt) (Kripto Para Borsası Verileri)
+- [yfinance](https://pypi.org/project/yfinance/) (Borsa ve Emtia Verileri)
 - [Google Generative AI](https://ai.google.dev/) (Gemini Modelleri)
 - [SQLite](https://www.sqlite.org/index.html) (Veri Saklama)
 - [OpenPyXL](https://openpyxl.readthedocs.io/) & [xlrd](https://xlrd.readthedocs.io/) (Excel Desteği)
@@ -74,8 +78,13 @@ Gelecekte tam teşekküllü bir mobil uygulamaya (iOS/Android) geçiş süreci i
 
 ## 📂 Dosya Yapısı
 
-- `app.py`: Uygulamanın ana kaynak kodu.
-- `requirements.txt`: Proje bağımlılıklarını içeren dosya.
+- `app.py`: Uygulamanın ana giriş noktası (Orchestrator).
+- `services/`: İş mantığını içeren modüller (Portfolio, AI Service vb.).
+- `views/`: Kullanıcı arayüzü bileşenleri.
+- `multi_asset_manager.py`: Varlık yönetimi ve veri çekme sınıfı.
+- `future-price.py`: XGBoost tabanlı fiyat olasılık tahmin modeli.
+- `requirements.txt`: Proje bağımlılıkları.
 - `db.py`: Veritabanı işlemleri (SQLite).
-- `shell.nix`: Nix ortam yapılandırması.
 - `check_model.py`: Model ve API kontrol betiği.
+- `Dockerfile`: Konteyner yapılandırması.
+- `shell.nix`: Nix ortam yapılandırması.
