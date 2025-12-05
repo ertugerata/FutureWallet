@@ -174,14 +174,32 @@ tab_portfolio, tab_past, tab_future, tab_analysis, tab_prob, tab_history = st.ta
 with tab_portfolio:
     st.subheader("Bütünleşik Portföy Yönetimi (BIST, Kripto, Emtia)")
 
+    # Ana Cüzdanı da dict formatına çevir (Her zaman erişilebilir olması için burada tanımlıyoruz)
+    full_portfolio = {
+        'BTC (Cüzdan)': {'type': 'crypto', 'amount': saved_btc, 'value': saved_btc * current_btc_price},
+        'Nakit (USDT)': {'type': 'cash', 'amount': saved_usdt, 'value': saved_usdt}
+    }
+
+    # Session State for extra assets
+    if 'extra_assets' not in st.session_state:
+        st.session_state.extra_assets = []
+
+    # Ek varlıkları ekle
+    if st.session_state.extra_assets:
+        for asset in st.session_state.extra_assets:
+            p = st.session_state.asset_manager.get_price(asset['symbol'], asset['type'])
+            if p:
+                val = p * asset['amount']
+                full_portfolio[asset['symbol']] = {
+                    'type': asset['type'],
+                    'amount': asset['amount'],
+                    'value': val
+                }
+
     col_assets, col_ai_advice = st.columns([1, 1])
 
     with col_assets:
         st.markdown("#### Varlık Ekle")
-
-        # Session State for extra assets
-        if 'extra_assets' not in st.session_state:
-            st.session_state.extra_assets = []
 
         with st.form("add_asset"):
             c1, c2, c3 = st.columns(3)
@@ -209,47 +227,29 @@ with tab_portfolio:
                         'amount': amount_input
                     })
                     st.success(f"{symbol_input} eklendi. Fiyat: {test_price}")
+                    st.rerun() # Refresh to show in table
                 else:
                     st.error(f"{symbol_input} fiyatı bulunamadı.")
 
         # Portföy Listesi
+        st.markdown("#### Portföy Varlıkları")
+
+        # Tablo gösterimi
+        disp_data = []
+        total_port_val = 0
+        for k, v in full_portfolio.items():
+            disp_data.append({
+                'Varlık': k,
+                'Tip': v['type'],
+                'Miktar': v['amount'],
+                'Değer ($)': f"${v['value']:,.2f}"
+            })
+            total_port_val += v['value']
+
+        st.table(disp_data)
+        st.metric("Toplam Portföy Değeri", f"${total_port_val:,.2f}")
+
         if st.session_state.extra_assets:
-            st.markdown("#### Takip Listesi")
-
-            # Ana Cüzdanı da dict formatına çevir
-            full_portfolio = {
-                'BTC (Cüzdan)': {'type': 'crypto', 'amount': saved_btc, 'value': saved_btc * current_btc_price}
-            }
-
-            # Nakit
-            full_portfolio['Nakit (USDT)'] = {'type': 'cash', 'amount': saved_usdt, 'value': saved_usdt}
-
-            # Ek varlıkları ekle
-            for asset in st.session_state.extra_assets:
-                p = st.session_state.asset_manager.get_price(asset['symbol'], asset['type'])
-                if p:
-                    val = p * asset['amount']
-                    full_portfolio[asset['symbol']] = {
-                        'type': asset['type'],
-                        'amount': asset['amount'],
-                        'value': val
-                    }
-
-            # Tablo gösterimi
-            disp_data = []
-            total_port_val = 0
-            for k, v in full_portfolio.items():
-                disp_data.append({
-                    'Varlık': k,
-                    'Tip': v['type'],
-                    'Miktar': v['amount'],
-                    'Değer ($)': f"${v['value']:,.2f}"
-                })
-                total_port_val += v['value']
-
-            st.table(disp_data)
-            st.metric("Toplam Portföy Değeri", f"${total_port_val:,.2f}")
-
             # Silme butonu
             if st.button("Listeyi Temizle"):
                 st.session_state.extra_assets = []
