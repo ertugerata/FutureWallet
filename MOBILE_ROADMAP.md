@@ -22,6 +22,7 @@ Kod tabanı modüler hale getirilmiştir (`services/` klasörü). Bir sonraki ad
 ### 1. Backend API Geliştirme (⏳ Sırada)
 *   **Hedef:** `services/` altındaki Python sınıflarını FastAPI veya Flask framework'ü ile dışa açmak.
 *   **Yapılacaklar:**
+    *   [ ] **(Yeni)** Streamlit arayüzünün Flask + HTML/CSS (Jinja2) yapısına dönüştürülmesi (Web Arayüzü).
     *   [ ] `PortfolioService` ve `DecisionSupportAI` sınıfları için REST API endpoint'lerinin yazılması.
     *   [ ] `future-price.py` içindeki ML modelinin (`predict_probability`) bir API endpoint'i olarak sunulması.
     *   [ ] JWT (JSON Web Token) ile temel kimlik doğrulama katmanının eklenmesi.
