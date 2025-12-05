@@ -6,6 +6,7 @@ Bu belge, **FutureWallet** projesinin mevcut Streamlit prototipinden tam teşekk
 
 Şu anki kod tabanı (`app.py`), aşağıdaki özelliklerle çalışan kararlı bir prototiptir ve mobil dönüşüm için gerekli iş mantığını barındırmaktadır:
 *   **Yapay Zeka:** Google Gemini 1.5 Flash/Pro entegrasyonu (Model seçimi, Chat analizi).
+*   **Makine Öğrenmesi:** XGBoost ile fiyat hedefi olasılık hesaplaması (`future-price.py`).
 *   **Veri Analizi:** İşlem geçmişi (CSV/Excel) yükleme ve analiz etme.
 *   **Veritabanı:** `db.py` üzerinden SQLite ile yerel kayıt (Analiz geçmişi, simülasyonlar, portföy durumu).
 *   **Simülasyon:** "What-If" senaryo analizleri ve kaydırıcı (slider) ile dinamik hesaplama.
@@ -18,10 +19,11 @@ Bu belge, **FutureWallet** projesinin mevcut Streamlit prototipinden tam teşekk
 Mevcut "monolitik" yapı (Streamlit) API tabanlı bir mimariye dönüştürülecektir.
 
 ### 1. Backend API Geliştirme (⏳ Beklemede)
-*   **Hedef:** `app.py` içindeki iş mantığını (Business Logic) FastAPI veya Flask servisine taşımak.
+*   **Hedef:** `app.py` ve `future-price.py` içindeki iş mantığını (Business Logic) FastAPI veya Flask servisine taşımak.
 *   **Yapılacaklar:**
     *   [ ] `get_benchmark_data` (Yahoo Finance) ve `get_current_btc_price` (CCXT) fonksiyonlarının servise taşınması.
     *   [ ] Gemini AI entegrasyonunun (`get_gemini_models`, prompt yönetimi) API endpoint'ine çevrilmesi.
+    *   [ ] Makine öğrenmesi modelinin (`predict_probability`) ayrı bir mikroservis veya endpoint olarak yapılandırılması.
     *   [ ] CSV analiz mantığının (`tab_analysis`) backend servisine taşınması ve validasyon katmanı eklenmesi.
 
 ### 2. Veritabanı Migrasyonu (⚠️ Planlanıyor)
@@ -57,6 +59,7 @@ Kullanıcı kitlesine ve bütçeye göre teknoloji seçimi yapılacaktır.
 ### Tamamlanan (Prototip Aşamasında)
 - [x] Temel Cüzdan Takibi ve Karşılaştırmalı Grafikler (BTC, Altın, S&P 500).
 - [x] Google Gemini AI Entegrasyonu (Dinamik Model Seçimi).
+- [x] XGBoost ile Olasılık Hesaplayıcısı (Machine Learning).
 - [x] CSV/Excel İşlem Geçmişi Analizi.
 - [x] SQLite ile Veri Kalıcılığı (Analiz ve Simülasyon Geçmişi).
 - [x] Environment Variable Yönetimi (`.env` ve Sidebar Fallback).
