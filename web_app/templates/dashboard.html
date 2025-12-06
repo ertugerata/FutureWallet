@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header">
+                Ayarlar
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="initial_investment" class="form-label">Başlangıç Yatırımı ($)</label>
+                        <input type="number" step="any" class="form-control" id="initial_investment" name="initial_investment" value="{{ initial_investment }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="btc_amount" class="form-label">BTC Miktarı</label>
+                        <input type="number" step="any" class="form-control" id="btc_amount" name="btc_amount" value="{{ btc_amount }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="usdt_amount" class="form-label">USDT Miktarı</label>
+                        <input type="number" step="any" class="form-control" id="usdt_amount" name="usdt_amount" value="{{ usdt_amount }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Güncelle</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                Anlık Durum
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Toplam Değer
+                    <span class="badge bg-success rounded-pill">${{ "%.2f"|format(snapshot.total_value) }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    BTC Fiyatı
+                    <span>${{ "%.2f"|format(snapshot.btc_price) }}</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-body">
+                {{ chart_html | safe }}
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-12">
+                <h5>Varlık Dağılımı</h5>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Varlık</th>
+                            <th>Tip</th>
+                            <th>Miktar</th>
+                            <th>Değer ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for name, details in snapshot.portfolio.items() %}
+                        <tr>
+                            <td>{{ name }}</td>
+                            <td>{{ details.type }}</td>
+                            <td>{{ details.amount }}</td>
+                            <td>{{ "%.2f"|format(details.value) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

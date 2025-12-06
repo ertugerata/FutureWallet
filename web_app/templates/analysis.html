@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Yapay Zeka Analizi</span>
+                {% if api_key_present %}
+                <span class="badge bg-success">API Key Aktif</span>
+                {% else %}
+                <span class="badge bg-danger">API Key Eksik</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="model" class="form-label">Model Seçimi</label>
+                            <select class="form-select" id="model" name="model">
+                                {% for model in models %}
+                                <option value="{{ model }}" {% if model == selected_model %}selected{% endif %}>{{ model }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="user_input" class="form-label">Sorunuz veya Analiz İsteğiniz</label>
+                        <textarea class="form-control" id="user_input" name="user_input" rows="4" required placeholder="Finansal piyasalar veya portföyünüz hakkında bir soru sorun..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" {% if not api_key_present %}disabled{% endif %}>
+                        Analiz Et
+                    </button>
+                </form>
+
+                {% if response %}
+                <div class="card mt-4">
+                    <div class="card-header bg-light">
+                        AI Yanıtı
+                    </div>
+                    <div class="card-body">
+                        <div class="markdown-body">
+                            {{ response | safe }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

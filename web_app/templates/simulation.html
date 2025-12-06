@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                Gelecek Simülasyonu (XGBoost)
+            </div>
+            <div class="card-body">
+                <p>Bitcoin için hedef fiyat olasılığını hesaplayın.</p>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="current_price" class="form-label">Mevcut Fiyat ($)</label>
+                        <input type="number" step="any" class="form-control" id="current_price" name="current_price" value="{{ current_price }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="target_price" class="form-label">Hedef Fiyat ($)</label>
+                        <input type="number" step="any" class="form-control" id="target_price" name="target_price" placeholder="Örn: 100000" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Hesapla</button>
+                </form>
+
+                {% if result %}
+                <div class="alert alert-info mt-4" role="alert">
+                    <h4 class="alert-heading">Sonuç</h4>
+                    <p>Mevcut fiyat <strong>${{ result.current }}</strong> iken, <strong>${{ result.target }}</strong> hedefine ulaşma olasılığı:</p>
+                    <hr>
+                    <h2 class="text-center">%{{ "%.2f"|format(result.probability) }}</h2>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
